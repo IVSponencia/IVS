@@ -1,0 +1,82 @@
+---
+title: "Indice"
+author: "Ignacio Gomar"
+date: "14/7/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+```{r}
+indice<-read.csv("const.csv")
+head(indice)
+
+
+indice<-indice%>%merge(anos_educacion, by="id")
+colnames(indice)
+
+indice<-indice[,c(1,3,4:6,9)]
+
+indice<-indice%>%group_by(comuna.x)%>%
+  summarise(indice_4=mean(indice_4),
+            indice_5=mean(indice_5),
+            indice_6=mean(indice_6),
+            indice_7=mean(ponderacion_7))
+hacinamiento<-hacinamiento%>%select(Comuna, indice_1)%>%
+  filter(Comuna!="Total")
+indice<-indice%>%rename("Comuna"=comuna.x)%>%
+  merge(hacinamiento, by="Comuna")
+
+indice<-indice%>%mutate(indice_T=(indice_4+indice_5+indice_6+indice_7+indice_1))
+
+```
+
+
+```{r}
+library(sf)
+caba<-st_read("https://cdn.buenosaires.gob.ar/datosabiertos/datasets/comunas/CABA_comunas.geojson")
+
+names(indice)
+
+caba<-caba%>%rename(Comuna=COMUNAS)%>%select(Comuna, geometry)
+
+caba$Comuna<-as.character(caba$Comuna)
+indice$Comuna<-as.character(indice$Comuna)
+
+indice<-left_join(x=caba, y=indice)
+
+indice<-indice%>%mutate(centroide=st_centroid(geometry))
+library(tidyr)
+
+
+
+```
+
+```{r}
+library(ggplot2)
+prelim1<-ggplot()+
+  geom_sf(data=indice, aes(fill=indice_T))+
+  scale_fill_viridis_b()
+```
